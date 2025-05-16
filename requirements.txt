@@ -3,6 +3,7 @@ asyncio
 dnspython
 ffmpeg-python
 gitpython
+heroku3
 pillow>=9.5.0
 py-tgcalls>=0.9.7
 pyrogram>=2.0.106
