@@ -1,9 +1,14 @@
-import uvloop
+import sys
+from typing import Optional
 
-uvloop.install()
+if sys.platform != "win32":
+    import uvloop
+    uvloop.install()
 
-from pyrogram import Client, errors
+from pyrogram.client import Client
+from pyrogram import errors
 from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.types import User
 
 import config
 from ..logging import LOGGER
@@ -11,7 +16,13 @@ from ..logging import LOGGER
 
 class Aviax(Client):
     def __init__(self):
-        LOGGER(__name__).info(f"Starting Bot...")
+        LOGGER(__name__).info("Starting Bot...")
+        
+        # Verify required configs
+        if not config.API_ID or not config.API_HASH or not config.BOT_TOKEN:
+            LOGGER(__name__).error("Required configs missing! Please check config.py")
+            sys.exit(1)
+            
         super().__init__(
             name="AviaxMusic",
             api_id=config.API_ID,
@@ -19,39 +30,40 @@ class Aviax(Client):
             bot_token=config.BOT_TOKEN,
             in_memory=True,
             parse_mode=ParseMode.HTML,
-            max_concurrent_transmissions=7,
         )
+        
+        self.username: Optional[str] = None
+        self.id: Optional[int] = None
+        self.name: Optional[str] = None
+        self.mention: Optional[str] = None
 
-    async def start(self):
+    async def start(self) -> "Aviax":
+        """Start the bot and set up its attributes"""
         await super().start()
+        self.me = await self.get_me()
+        
         self.id = self.me.id
-        self.name = self.me.first_name + " " + (self.me.last_name or "")
         self.username = self.me.username
         self.mention = self.me.mention
-
+        self.name = f"{self.me.first_name} {self.me.last_name or ''}"
+        
         try:
             await self.send_message(
-                chat_id=config.LOG_GROUP_ID,
-                text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
+                config.LOG_GROUP_ID,
+                f"» {self.mention} Bot started!"
             )
-        except (errors.ChannelInvalid, errors.PeerIdInvalid):
-            LOGGER(__name__).error(
-                "Bot has failed to access the log group/channel. Make sure that you have added your bot to your log group/channel."
-            )
-            exit()
-        except Exception as ex:
-            LOGGER(__name__).error(
-                f"Bot has failed to access the log group/channel.\n  Reason : {type(ex).__name__}."
-            )
-            exit()
-
-        a = await self.get_chat_member(config.LOG_GROUP_ID, self.id)
-        if a.status != ChatMemberStatus.ADMINISTRATOR:
-            LOGGER(__name__).error(
-                "Please promote your bot as an admin in your log group/channel."
-            )
-            exit()
+        except errors.ChatWriteForbidden:
+            LOGGER(__name__).error("Bot does not have write permission in LOG_GROUP_ID")
+        except errors.ChannelInvalid:
+            LOGGER(__name__).error("LOG_GROUP_ID is invalid or bot is not a member")
+        except Exception as e:
+            LOGGER(__name__).error(f"Failed to send startup message: {str(e)}")
+            
         LOGGER(__name__).info(f"Music Bot Started as {self.name}")
+        return self
 
-    async def stop(self):
-        await super().stop()
+    async def stop(self, block: bool = True) -> "Aviax":
+        """Stop the bot"""
+        await super().stop(block=block)
+        LOGGER(__name__).info("Music Bot Stopped, Bye!")
+        return self

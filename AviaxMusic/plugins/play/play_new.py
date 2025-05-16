@@ -6,11 +6,8 @@ from pyrogram import filters
 from pyrogram.types import Message
 
 from ... import app
-from ...platforms.Youtube import YouTubeAPI
 from ...core.call import Aviax
-
-# Initialize YouTube API
-youtube = YouTubeAPI()
+from ...utils.stream.simple_stream import stream, skip_stream
 
 @app.on_message(
     filters.command(["play", "vplay"]) 
@@ -18,8 +15,6 @@ youtube = YouTubeAPI()
 )
 async def play_track(_, message: Message):
     """Play YouTube audio/video in voice chat"""
-    chat_id = message.chat.id
-    
     if len(message.command) < 2:
         return await message.reply_text("❌ Please provide a YouTube URL or search query.")
     
@@ -29,28 +24,16 @@ async def play_track(_, message: Message):
         query = message.text.split(None, 1)[1]
         video_mode = message.command[0].startswith("v")
         
-        # Get video info
-        info = await youtube.get_video_info(query)
-        if not info.get("id"):
-            await status.edit_text("❌ No matching video found")
+        result = await stream(message, query, video_mode)
+        if not result:
+            await status.edit_text("❌ Could not process this request.")
             return
             
-        # Get stream URL
-        stream_url = await youtube.stream_url(info["url"])
-        if not stream_url:
-            await status.edit_text("❌ Could not get playable URL")
-            return
-            
-        # Join and play
-        await Aviax.join_group_call(
-            chat_id,
-            stream_url,
-            video=video_mode
-        )
-        
         await status.edit_text(
-            f"🎵 **Now Playing**\n"
-            f"**Title:** {info['title']}\n"
+            f"🎵 **{'Added to Queue' if 'position' in result else 'Now Playing'}**\n"
+            f"**Title:** {result['title']}\n"
+            f"**Duration:** {result['duration']} seconds\n"
+            f"**Requested By:** {result['requested_by']}\n"
             f"**Mode:** {'Video' if video_mode else 'Audio'}"
         )
             
@@ -98,9 +81,16 @@ async def stop_stream(_, message: Message):
     & filters.group
 )
 async def skip_track(_, message: Message):
-    """Skip to next track (same as stop for single track)"""
+    """Skip to next track"""
     try:
-        await Aviax.leave_group_call(message.chat.id)
-        await message.reply_text("⏭️ Track skipped")
+        next_track = await skip_stream(message.chat.id)
+        if next_track:
+            await message.reply_text(
+                f"⏭️ **Skipped to Next Track**\n"
+                f"**Title:** {next_track['title']}\n"
+                f"**Mode:** {'Video' if next_track['video'] else 'Audio'}"
+            )
+        else:
+            await message.reply_text("⏹️ No more tracks in queue")
     except Exception as e:
         await message.reply_text(f"❌ Error: {str(e)}")

@@ -9,5 +9,6 @@ python-dotenv
 pyyaml
 requests
 tgcrypto
+uvloop; platform_system != "Windows"
 yt-dlp
 youtube-search-python>=1.6.6
