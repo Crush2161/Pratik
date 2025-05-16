@@ -1,0 +1,13 @@
+aiohttp>=3.7.4
+asyncio
+dnspython
+ffmpeg-python
+pillow>=9.5.0
+py-tgcalls>=0.9.7
+pyrogram>=2.0.106
+python-dotenv
+pyyaml
+requests
+tgcrypto
+yt-dlp
+youtube-search-python>=1.6.6
