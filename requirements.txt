@@ -2,12 +2,14 @@ aiohttp>=3.7.4
 asyncio
 dnspython
 ffmpeg-python
-gitpython
-heroku3
+GitPython>=3.1.30
+heroku3>=5.2.0
+motor>=3.1.1
 pillow>=9.5.0
 py-tgcalls>=0.9.7
 pyrogram>=2.0.106
 python-dotenv
+pymongo>=4.3.3
 pyyaml
 requests
 tgcrypto
